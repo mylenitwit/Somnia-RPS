@@ -901,17 +901,10 @@ function App() {
       
     } catch (error: any) {
       console.error("Failed to create game:", error);
-      if (error.code === 4001) { // Kullanıcı işlemi iptal etti
-        setPopup({
-          message: 'Transaction cancelled by user',
-          type: 'info'
-        });
-      } else {
-        setPopup({
-          message: `Error creating game: ${error.message}`,
-          type: 'error'
-        });
-      }
+      setPopup({
+        message: `Error creating game: ${error.message}`,
+        type: 'error'
+      });
     } finally {
       setLoading(false);
     }
@@ -954,17 +947,10 @@ function App() {
       
     } catch (error: any) {
       console.error("Failed to join game:", error);
-      if (error.code === 4001) { // Kullanıcı işlemi iptal etti
-        setPopup({
-          message: 'Transaction cancelled by user',
-          type: 'info'
-        });
-      } else {
-        setPopup({
-          message: error.message,
-          type: 'error'
-        });
-      }
+      setPopup({
+        message: error.message,
+        type: 'error'
+      });
     } finally {
       setLoading(false);
     }
@@ -1042,21 +1028,15 @@ function App() {
         }
     } catch (error: any) {
         console.error('Seçim yapılırken hata:', error);
-        if (error.code === 4001) { // Kullanıcı işlemi iptal etti
+        if (error.message.includes('revert')) {
+            alert('İşlem başarısız oldu. Lütfen tekrar deneyin.');
+        } else if (error.code === 4001) { // Kullanıcı işlemi iptal etti
             setPopup({
-                message: 'Transaction cancelled by user',
+                message: 'Transaction cancelled',
                 type: 'info'
             });
-        } else if (error.message.includes('revert')) {
-            setPopup({
-                message: 'Transaction failed. Please try again.',
-                type: 'error'
-            });
         } else {
-            setPopup({
-                message: 'An error occurred: ' + error.message,
-                type: 'error'
-            });
+            alert('Bir hata oluştu: ' + error.message);
         }
     } finally {
         setLoading(false);
@@ -1088,17 +1068,10 @@ function App() {
       
     } catch (error: any) {
       console.error("Failed to cancel game:", error);
-      if (error.code === 4001) { // Kullanıcı işlemi iptal etti
-        setPopup({
-          message: 'Transaction cancelled by user',
-          type: 'info'
-        });
-      } else {
-        setPopup({
-          message: error.message,
-          type: 'error'
-        });
-      }
+      setPopup({
+        message: error.message,
+        type: 'error'
+      });
     } finally {
       setLoading(false);
     }
@@ -1387,27 +1360,22 @@ function App() {
               </div>
               {isAvailableGamesOpen && (
                 <div className="available-games">
-                  <h2>Available Games</h2>
-                  {availableGames && availableGames.length > 0 ? (
-                    <div className="games-list">
-                      {availableGames.slice(0, 5).map((game: any) => (
-                        <div key={game.id.toString()} className="game-item">
-                          <div className="game-info">
-                            <span className="game-id">Game #{game.id.toString()}</span>
-                            <span className="bet-amount">{ethers.utils.formatEther(game.betAmount)} STT</span>
-                          </div>
-                          <button 
-                            onClick={() => joinGame(parseInt(game.id))}
-                            disabled={!account || loading}
-                          >
-                            Join Game
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p>No available games at the moment.</p>
-                  )}
+                  <div className="games-list">
+                    {availableGames?.slice(0, 5).map((gameId: any) => (
+                      <div key={gameId} className="game-item">
+                        <span>Game #{gameId}</span>
+                        <button 
+                          onClick={() => joinGame(parseInt(gameId))}
+                          disabled={loading}
+                        >
+                          Join
+                        </button>
+                      </div>
+                    ))}
+                    {(!availableGames || availableGames.length === 0) && (
+                      <div className="no-games">No available games</div>
+                    )}
+                  </div>
                 </div>
               )}
             </section>
@@ -1450,4 +1418,81 @@ function App() {
                           </span>
                         </td>
                         <td>
-                          <span className={`
+                          <span className={`status-badge ${getGameStatusClass(game)}`}>
+                            {getGameStatus(game)}
+                          </span>
+                        </td>
+                        <td>
+                          {game.state === 2 && (
+                            <span className={`status-badge ${
+                              game.creatorWins > game.joinerWins 
+                                ? (game.creator.toLowerCase() === account?.toLowerCase() ? 'status-won' : 'status-lost')
+                                : game.joinerWins > game.creatorWins
+                                  ? (game.creator.toLowerCase() === account?.toLowerCase() ? 'status-lost' : 'status-won')
+                                  : 'status-draw'
+                            }`}>
+                              {game.creatorWins > game.joinerWins 
+                                ? (game.creator.toLowerCase() === account?.toLowerCase() ? 'Won' : 'Lost')
+                                : game.joinerWins > game.creatorWins
+                                  ? (game.creator.toLowerCase() === account?.toLowerCase() ? 'Lost' : 'Won')
+                                  : 'Draw'}
+                            </span>
+                          )}
+                        </td>
+                        <td>{game.createdAt}</td>
+                        <td>
+                          {game.state === 0 && game.creator.toLowerCase() === account?.toLowerCase() ? (
+                            <button 
+                              className="cancel-button"
+                              onClick={() => cancelGame(parseInt(game.id))}
+                              disabled={loading}
+                            >
+                              Cancel
+                            </button>
+                          ) : game.state === 1 ? (
+                            <button 
+                              className="play-button"
+                              onClick={() => navigate(`/game/${game.id}`)}
+                            >
+                              Play
+                            </button>
+                          ) : (
+                            <span className="completed-text">Completed</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </section>
+
+            {popup && (
+              <Popup
+                message={popup.message}
+                type={popup.type}
+                onClose={() => setPopup(null)}
+              />
+            )}
+          </>
+        } />
+        <Route path="/game/:id" element={<GamePage />} />
+        <Route path="/admin" element={<AdminPage />} />
+      </Routes>
+    </div>
+  );
+}
+
+function AppWrapper() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<App />} />
+        <Route path="/game/:id" element={<GamePage />} />
+        <Route path="/admin" element={<AdminPage />} />
+      </Routes>
+    </Router>
+  );
+}
+
+export default AppWrapper;
