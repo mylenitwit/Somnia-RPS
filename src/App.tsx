@@ -901,10 +901,17 @@ function App() {
       
     } catch (error: any) {
       console.error("Failed to create game:", error);
-      setPopup({
-        message: `Error creating game: ${error.message}`,
-        type: 'error'
-      });
+      if (error.code === 4001) { // Kullanıcı işlemi iptal etti
+        setPopup({
+          message: 'Transaction cancelled by user',
+          type: 'info'
+        });
+      } else {
+        setPopup({
+          message: `Error creating game: ${error.message}`,
+          type: 'error'
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -947,10 +954,17 @@ function App() {
       
     } catch (error: any) {
       console.error("Failed to join game:", error);
-      setPopup({
-        message: error.message,
-        type: 'error'
-      });
+      if (error.code === 4001) { // Kullanıcı işlemi iptal etti
+        setPopup({
+          message: 'Transaction cancelled by user',
+          type: 'info'
+        });
+      } else {
+        setPopup({
+          message: error.message,
+          type: 'error'
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -1028,10 +1042,21 @@ function App() {
         }
     } catch (error: any) {
         console.error('Seçim yapılırken hata:', error);
-        if (error.message.includes('revert')) {
-            alert('İşlem başarısız oldu. Lütfen tekrar deneyin.');
+        if (error.code === 4001) { // Kullanıcı işlemi iptal etti
+            setPopup({
+                message: 'Transaction cancelled by user',
+                type: 'info'
+            });
+        } else if (error.message.includes('revert')) {
+            setPopup({
+                message: 'Transaction failed. Please try again.',
+                type: 'error'
+            });
         } else {
-            alert('Bir hata oluştu: ' + error.message);
+            setPopup({
+                message: 'An error occurred: ' + error.message,
+                type: 'error'
+            });
         }
     } finally {
         setLoading(false);
@@ -1063,10 +1088,17 @@ function App() {
       
     } catch (error: any) {
       console.error("Failed to cancel game:", error);
-      setPopup({
-        message: error.message,
-        type: 'error'
-      });
+      if (error.code === 4001) { // Kullanıcı işlemi iptal etti
+        setPopup({
+          message: 'Transaction cancelled by user',
+          type: 'info'
+        });
+      } else {
+        setPopup({
+          message: error.message,
+          type: 'error'
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -1354,52 +1386,29 @@ function App() {
                 </div>
               </div>
               {isAvailableGamesOpen && (
-                <table className="games-table">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Creator</th>
-                      <th>Bet</th>
-                      <th>Type</th>
-                      <th>Capacity</th>
-                      <th>Created</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {availableGames.map((game) => (
-                      <tr key={game.id}>
-                        <td>{game.id}</td>
-                        <td>{game.creator.slice(0, 6)}...{game.creator.slice(-4)}</td>
-                        <td>{game.betAmount} STT</td>
-                        <td>
-                          <span className={`game-type-badge ${game.gameType === 1 ? 'bot-badge' : 'pvp-badge'}`}>
-                            {game.gameType === 1 ? 'Bot' : 'PvP'}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={`capacity-badge ${getGameStatusClass(game)}`}>
-                            {getGameCapacity(game)}
-                          </span>
-                        </td>
-                        <td>{game.createdAt}</td>
-                        <td>
+                <div className="available-games">
+                  <h2>Available Games</h2>
+                  {availableGames && availableGames.length > 0 ? (
+                    <div className="games-list">
+                      {availableGames.slice(0, 5).map((game: any) => (
+                        <div key={game.id.toString()} className="game-item">
+                          <div className="game-info">
+                            <span className="game-id">Game #{game.id.toString()}</span>
+                            <span className="bet-amount">{ethers.utils.formatEther(game.betAmount)} STT</span>
+                          </div>
                           <button 
-                            className="play-button"
                             onClick={() => joinGame(parseInt(game.id))}
-                            disabled={!account || game.state === 1 || game.creator.toLowerCase() === account.toLowerCase()}
+                            disabled={!account || loading}
                           >
-                            {game.creator.toLowerCase() === account?.toLowerCase() 
-                              ? 'Your Game' 
-                              : game.state === 1 
-                                ? 'Full' 
-                                : 'Play'}
+                            Join Game
                           </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p>No available games at the moment.</p>
+                  )}
+                </div>
               )}
             </section>
 
@@ -1441,81 +1450,4 @@ function App() {
                           </span>
                         </td>
                         <td>
-                          <span className={`status-badge ${getGameStatusClass(game)}`}>
-                            {getGameStatus(game)}
-                          </span>
-                        </td>
-                        <td>
-                          {game.state === 2 && (
-                            <span className={`status-badge ${
-                              game.creatorWins > game.joinerWins 
-                                ? (game.creator.toLowerCase() === account?.toLowerCase() ? 'status-won' : 'status-lost')
-                                : game.joinerWins > game.creatorWins
-                                  ? (game.creator.toLowerCase() === account?.toLowerCase() ? 'status-lost' : 'status-won')
-                                  : 'status-draw'
-                            }`}>
-                              {game.creatorWins > game.joinerWins 
-                                ? (game.creator.toLowerCase() === account?.toLowerCase() ? 'Won' : 'Lost')
-                                : game.joinerWins > game.creatorWins
-                                  ? (game.creator.toLowerCase() === account?.toLowerCase() ? 'Lost' : 'Won')
-                                  : 'Draw'}
-                            </span>
-                          )}
-                        </td>
-                        <td>{game.createdAt}</td>
-                        <td>
-                          {game.state === 0 && game.creator.toLowerCase() === account?.toLowerCase() ? (
-                            <button 
-                              className="cancel-button"
-                              onClick={() => cancelGame(parseInt(game.id))}
-                              disabled={loading}
-                            >
-                              Cancel
-                            </button>
-                          ) : game.state === 1 ? (
-                            <button 
-                              className="play-button"
-                              onClick={() => navigate(`/game/${game.id}`)}
-                            >
-                              Play
-                            </button>
-                          ) : (
-                            <span className="completed-text">Completed</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </section>
-
-            {popup && (
-              <Popup
-                message={popup.message}
-                type={popup.type}
-                onClose={() => setPopup(null)}
-              />
-            )}
-          </>
-        } />
-        <Route path="/game/:id" element={<GamePage />} />
-        <Route path="/admin" element={<AdminPage />} />
-      </Routes>
-    </div>
-  );
-}
-
-function AppWrapper() {
-  return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<App />} />
-        <Route path="/game/:id" element={<GamePage />} />
-        <Route path="/admin" element={<AdminPage />} />
-      </Routes>
-    </Router>
-  );
-}
-
-export default AppWrapper;
+                          <span className={`
