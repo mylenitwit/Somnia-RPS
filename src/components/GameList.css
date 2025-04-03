@@ -1,0 +1,112 @@
+.game-list {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: white;
+  margin-bottom: 20px;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.no-games {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  background-color: white;
+  margin-bottom: 20px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead {
+  background-color: #f7fafc;
+}
+
+th {
+  text-align: left;
+  padding: 12px 15px;
+  font-weight: bold;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+.game-type {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-weight: bold;
+  color: white;
+  font-size: 0.85rem;
+}
+
+.game-type.pvp {
+  background-color: #3182ce;
+}
+
+.game-type.bot {
+  background-color: #38a169;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.action-button {
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-weight: bold;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.action-button.join {
+  background-color: #3182ce;
+}
+
+.action-button.join:hover:not(:disabled) {
+  background-color: #2b6cb0;
+}
+
+.action-button.cancel {
+  background-color: #e53e3e;
+}
+
+.action-button.cancel:hover:not(:disabled) {
+  background-color: #c53030;
+}
+
+.action-button.play {
+  background-color: #38a169;
+}
+
+.action-button.play:hover:not(:disabled) {
+  background-color: #2f855a;
+}
+
+.action-button:disabled {
+  background-color: #a0aec0;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  table {
+    min-width: 700px;
+  }
+} 

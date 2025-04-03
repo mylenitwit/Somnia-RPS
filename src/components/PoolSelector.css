@@ -1,0 +1,50 @@
+.pool-selector {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  background-color: white;
+}
+
+.pool-selector h2 {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-bottom: 15px;
+}
+
+.pool-options {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+}
+
+.pool-button {
+  padding: 10px 15px;
+  border-radius: 6px;
+  font-weight: bold;
+  background-color: #e2e8f0;
+  color: #4a5568;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.pool-button.selected {
+  background-color: #3182ce;
+  color: white;
+}
+
+.pool-button:hover:not(:disabled):not(.selected) {
+  background-color: #cbd5e0;
+}
+
+.pool-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .pool-options {
+    grid-template-columns: repeat(2, 1fr);
+  }
+} 
