@@ -30,9 +30,10 @@
   "scripts": {
     "start": "PORT=3001 react-scripts start",
     "build": "react-scripts build",
+    "build:obfuscate": "react-scripts build && javascript-obfuscator ./build/static/js --output ./build/static/js --config ./obfuscate.config.js",
+    "vercel-build": "npm run build:obfuscate",
     "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "build:obfuscate": "react-scripts build && javascript-obfuscator ./build/static/js --output ./build/static/js --config ./obfuscate.config.js"
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [
