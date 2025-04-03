@@ -3,29 +3,33 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
+    "@chakra-ui/hooks": "^2.4.2",
+    "@chakra-ui/icons": "^2.2.4",
+    "@chakra-ui/react": "^3.15.0",
+    "@chakra-ui/system": "^2.6.2",
+    "@chakra-ui/table": "^2.1.0",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^13.5.0",
     "@types/jest": "^27.5.2",
-    "@types/node": "^16.18.80",
-    "@types/react": "^18.2.55",
-    "@types/react-dom": "^18.2.19",
-    "ethers": "^5.7.2",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.22.1",
+    "@types/node": "^16.18.126",
+    "@types/react": "^19.0.12",
+    "@types/react-dom": "^19.0.4",
+    "framer-motion": "^12.6.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "^7.4.1",
     "react-scripts": "5.0.1",
     "typescript": "^4.9.5",
     "web-vitals": "^2.1.4"
   },
-  "devDependencies": {
-    "javascript-obfuscator": "^4.0.2"
-  },
   "scripts": {
-    "start": "PORT=3001 react-scripts start",
+    "start": "react-scripts start",
     "build": "react-scripts build",
-    "build:obfuscate": "react-scripts build && javascript-obfuscator ./build/static/js --output ./build/static/js --config ./obfuscate.config.js",
-    "vercel-build": "npm run build:obfuscate",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -46,5 +50,16 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@nomiclabs/hardhat-waffle": "^2.0.6",
+    "@openzeppelin/contracts": "^5.2.0",
+    "@types/react-icons": "^3.0.0",
+    "chai": "^5.2.0",
+    "ethereum-waffle": "^4.0.10",
+    "ethers": "^5.7.2",
+    "hardhat": "^2.22.19"
   }
 }
