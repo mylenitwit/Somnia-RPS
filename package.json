@@ -13,23 +13,20 @@
     "ethers": "^5.7.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.22.1",
+    "react-router-dom": "^6.22.0",
     "react-scripts": "5.0.1",
     "typescript": "^4.9.5",
-    "web-vitals": "^2.1.4"
-  },
-  "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
-    "@types/chai": "^4.3.11",
-    "chai": "^4.3.7",
-    "hardhat": "^2.19.4"
+    "web-vitals": "^2.1.4",
+    "javascript-obfuscator": "^4.0.2"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
+    "start": "set PORT=3004 && react-scripts start",
+    "build": "set PORT=3004 && react-scripts build",
+    "build:clean": "set PORT=3004 && react-scripts build && npx babel build/static/js -d build/static/js --plugins transform-remove-console",
+    "build:obfuscate": "set PORT=3004 && react-scripts build && javascript-obfuscator ./build/static/js --output ./build/static/js --config ./obfuscate.config.js",
+    "serve": "serve -s build -l 3004",
     "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "compile": "hardhat compile"
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [
@@ -48,5 +45,10 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.24.0",
+    "babel-plugin-transform-remove-console": "^6.9.4",
+    "serve": "^14.2.4"
   }
 }

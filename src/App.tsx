@@ -564,21 +564,17 @@ function App() {
   const [selectedPool, setSelectedPool] = useState<string>("0.5");
   const [myGames, setMyGames] = useState<any[]>([]);
   const [availableGames, setAvailableGames] = useState<any[]>([]);
-  const [currentGame, setCurrentGame] = useState<any>(null);
+  const [currentGame, setCurrentGame] = useState<any | null>(null);
   const [gameResult, setGameResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [lastGames, setLastGames] = useState<Array<{
-    id: number;
-    result: string;
-    betAmount: string;
-    date: string;
-  }>>([]);
-  const [popup, setPopup] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [lastGames, setLastGames] = useState<any[]>([]);
+  const [popup, setPopup] = useState<{ type: 'success' | 'error' | 'info', message: string } | null>(null);
   const navigate = useNavigate();
   const [isAvailableGamesOpen, setIsAvailableGamesOpen] = useState(true);
   const [isUserGamesOpen, setIsUserGamesOpen] = useState(true);
   const location = useLocation();
   const [isOwner, setIsOwner] = useState(false);
+  const [betAmount, setBetAmount] = useState<string>('0.1');
 
   // Available pool options in STT
   const poolOptions = ["0.5", "1", "5", "10"];
@@ -783,15 +779,9 @@ function App() {
     }
     
     try {
-      // Debug: Kontrat adresini ve mevcut havuzları görelim
-      console.log("Kontrat adresi:", contract.address);
-      console.log("Kontrat fonksiyonları:", Object.keys(contract.functions));
-      
-      // getAvailableGames fonksiyonunu çağır
       const gameIds = await contract.getAvailableGames();
       console.log("Bulunan oyun ID'leri:", gameIds.map((id: any) => id.toString()));
       
-      // Her bir oyun için detayları getir
       const games = await Promise.all(
         gameIds.map(async (id: any) => {
           try {
@@ -802,21 +792,22 @@ function App() {
             
             // Sadece WAITING durumundaki oyunları göster
             if (basicDetails.state === 0) {
+              const betAmount = basicDetails.betAmount ? ethers.utils.formatEther(basicDetails.betAmount) : '0';
               return {
                 id: id.toString(),
-                creator: basicDetails.creator,
-                joiner: basicDetails.joiner,
-                betAmount: ethers.utils.formatEther(basicDetails.betAmount),
-                state: basicDetails.state,
-                gameType: basicDetails.gameType,
-                currentRound: roundDetails.currentRound,
-                creatorWins: roundDetails.creatorWins,
-                joinerWins: roundDetails.joinerWins,
-                creatorConfirmed: roundDetails.creatorConfirmed,
-                joinerConfirmed: roundDetails.joinerConfirmed,
-                creatorChoice: roundDetails.creatorChoice,
-                joinerChoice: roundDetails.joinerChoice,
-                createdAt: new Date(basicDetails.createdAt.toNumber() * 1000)
+                creator: basicDetails.creator || 'Unknown',
+                joiner: basicDetails.joiner || 'Unknown',
+                betAmount: betAmount,
+                state: basicDetails.state || 0,
+                gameType: basicDetails.gameType || 0,
+                currentRound: roundDetails.currentRound || 0,
+                creatorWins: roundDetails.creatorWins || 0,
+                joinerWins: roundDetails.joinerWins || 0,
+                creatorConfirmed: roundDetails.creatorConfirmed || false,
+                joinerConfirmed: roundDetails.joinerConfirmed || false,
+                creatorChoice: roundDetails.creatorChoice || 0,
+                joinerChoice: roundDetails.joinerChoice || 0,
+                createdAt: basicDetails.createdAt ? new Date(basicDetails.createdAt.toNumber() * 1000).toLocaleString() : new Date().toLocaleString()
               };
             }
             return null;
@@ -830,11 +821,7 @@ function App() {
       // null değerleri filtrele ve tarihe göre sırala
       const availableGames = games
         .filter(game => game !== null)
-        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-        .map(game => ({
-          ...game,
-          createdAt: game.createdAt.toLocaleString()
-        }));
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       console.log("Kullanılabilir oyunlar:", availableGames);
       setAvailableGames(availableGames);
@@ -925,7 +912,14 @@ function App() {
       
       // Get the game details to determine the bet amount
       const gameDetails = await contract.getGameBasicDetails(gameId);
+      if (!gameDetails || !gameDetails.betAmount) {
+        throw new Error('Invalid game details');
+      }
+      
       const betAmount = gameDetails.betAmount;
+      if (!betAmount || betAmount.toString() === '0') {
+        throw new Error('Invalid bet amount');
+      }
       
       const tx = await contract.joinGame(gameId, {
         value: betAmount,
@@ -948,7 +942,7 @@ function App() {
     } catch (error: any) {
       console.error("Failed to join game:", error);
       setPopup({
-        message: error.message,
+        message: error.message || 'Failed to join game',
         type: 'error'
       });
     } finally {
@@ -1030,11 +1024,6 @@ function App() {
         console.error('Seçim yapılırken hata:', error);
         if (error.message.includes('revert')) {
             alert('İşlem başarısız oldu. Lütfen tekrar deneyin.');
-        } else if (error.code === 4001) { // Kullanıcı işlemi iptal etti
-            setPopup({
-                message: 'Transaction cancelled',
-                type: 'info'
-            });
         } else {
             alert('Bir hata oluştu: ' + error.message);
         }
@@ -1226,14 +1215,120 @@ function App() {
     checkIfOwner();
   }, [account, contract]);
 
+  // My games için otomatik yenileme
+  useEffect(() => {
+    const fetchMyGames = async () => {
+      if (!contract || !account) {
+        console.log("Contract veya account yok, my games güncellenmiyor");
+        return;
+      }
+      
+      try {
+        console.log("My games yenileniyor...");
+        const gameIds = await contract.getUserGames(account);
+        console.log("Bulunan oyun ID'leri:", gameIds.map((id: any) => id.toString()));
+        
+        const games = await Promise.all(
+          gameIds.map(async (id: any) => {
+            try {
+              const [basicDetails, roundDetails] = await Promise.all([
+                contract.getGameBasicDetails(id),
+                contract.getGameRoundDetails(id)
+              ]);
+              
+              return {
+                id: id.toString(),
+                creator: basicDetails.creator || 'Unknown',
+                joiner: basicDetails.joiner || 'Unknown',
+                betAmount: ethers.utils.formatEther(basicDetails.betAmount || '0'),
+                state: basicDetails.state || 0,
+                gameType: basicDetails.gameType || 0,
+                currentRound: roundDetails.currentRound || 0,
+                creatorWins: roundDetails.creatorWins || 0,
+                joinerWins: roundDetails.joinerWins || 0,
+                creatorConfirmed: roundDetails.creatorConfirmed || false,
+                joinerConfirmed: roundDetails.joinerConfirmed || false,
+                creatorChoice: roundDetails.creatorChoice || 0,
+                joinerChoice: roundDetails.joinerChoice || 0,
+                createdAt: basicDetails.createdAt ? new Date(basicDetails.createdAt.toNumber() * 1000).toLocaleString() : new Date().toLocaleString()
+              };
+            } catch (error) {
+              console.error(`Oyun detayları alınamadı (ID: ${id}):`, error);
+              return null;
+            }
+          })
+        );
+        
+        const validGames = games.filter(game => game !== null);
+        console.log("Güncellenen my games:", validGames);
+        setMyGames(validGames);
+        
+      } catch (error) {
+        console.error('My games yenilenirken hata:', error);
+      }
+    };
+
+    // İlk yükleme
+    fetchMyGames();
+
+    // 15 saniyede bir yenileme
+    const interval = setInterval(fetchMyGames, 15000);
+
+    return () => clearInterval(interval);
+  }, [contract, account]);
+
   // Available games için otomatik yenileme
   useEffect(() => {
     const fetchAvailableGames = async () => {
-      if (!contract) return;
+      if (!contract) {
+        console.log("Contract yok, available games güncellenmiyor");
+        return;
+      }
       
       try {
-        const games = await contract.getAvailableGames();
-        setAvailableGames(games);
+        console.log("Available games yenileniyor...");
+        const gameIds = await contract.getAvailableGames();
+        console.log("Bulunan oyun ID'leri:", gameIds.map((id: any) => id.toString()));
+        
+        const games = await Promise.all(
+          gameIds.map(async (id: any) => {
+            try {
+              const [basicDetails, roundDetails] = await Promise.all([
+                contract.getGameBasicDetails(id),
+                contract.getGameRoundDetails(id)
+              ]);
+              
+              // Sadece WAITING durumundaki oyunları göster
+              if (basicDetails.state === 0) {
+                return {
+                  id: id.toString(),
+                  creator: basicDetails.creator || 'Unknown',
+                  joiner: basicDetails.joiner || 'Unknown',
+                  betAmount: ethers.utils.formatEther(basicDetails.betAmount || '0'),
+                  state: basicDetails.state || 0,
+                  gameType: basicDetails.gameType || 0,
+                  currentRound: roundDetails.currentRound || 0,
+                  creatorWins: roundDetails.creatorWins || 0,
+                  joinerWins: roundDetails.joinerWins || 0,
+                  creatorConfirmed: roundDetails.creatorConfirmed || false,
+                  joinerConfirmed: roundDetails.joinerConfirmed || false,
+                  creatorChoice: roundDetails.creatorChoice || 0,
+                  joinerChoice: roundDetails.joinerChoice || 0,
+                  createdAt: basicDetails.createdAt ? new Date(basicDetails.createdAt.toNumber() * 1000).toLocaleString() : new Date().toLocaleString()
+                };
+              }
+              return null;
+            } catch (error) {
+              console.error(`Oyun detayları alınamadı (ID: ${id}):`, error);
+              return null;
+            }
+          })
+        );
+        
+        const validGames = games.filter(game => game !== null);
+        console.log("Güncellenen available games:", validGames);
+        setAvailableGames(validGames);
+        
       } catch (error) {
         console.error('Available games yenilenirken hata:', error);
       }
@@ -1245,9 +1340,32 @@ function App() {
     // 15 saniyede bir yenileme
     const interval = setInterval(fetchAvailableGames, 15000);
 
-    // Component unmount olduğunda interval'i temizle
     return () => clearInterval(interval);
   }, [contract]);
+
+  // Cüzdan bağlantısını kontrol et
+  useEffect(() => {
+    const checkWalletConnection = async () => {
+      if (window.ethereum) {
+        try {
+          const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+          if (accounts.length > 0) {
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            const signer = provider.getSigner();
+            const contract = new ethers.Contract(RPS_CONTRACT_ADDRESS, contractABI, signer);
+            setAccount(accounts[0]);
+            setContract(contract);
+          }
+        } catch (error) {
+          console.error("Cüzdan bağlantısı kontrol edilirken hata:", error);
+        }
+      }
+    };
+
+    // Her 5 saniyede bir cüzdan bağlantısını kontrol et
+    const interval = setInterval(checkWalletConnection, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Wallet connection section
   const renderWalletSection = () => {
@@ -1359,24 +1477,52 @@ function App() {
                 </div>
               </div>
               {isAvailableGamesOpen && (
-                <div className="available-games">
-                  <div className="games-list">
-                    {availableGames?.slice(0, 5).map((gameId: any) => (
-                      <div key={gameId} className="game-item">
-                        <span>Game #{gameId}</span>
-                        <button 
-                          onClick={() => joinGame(parseInt(gameId))}
-                          disabled={loading}
-                        >
-                          Join
-                        </button>
-                      </div>
+                <table className="games-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Creator</th>
+                      <th>Bet</th>
+                      <th>Type</th>
+                      <th>Capacity</th>
+                      <th>Created</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {availableGames.map((game) => (
+                      <tr key={game.id}>
+                        <td>{game.id}</td>
+                        <td>{game.creator ? `${game.creator.slice(0, 6)}...${game.creator.slice(-4)}` : 'Unknown'}</td>
+                        <td>{game.betAmount} STT</td>
+                        <td>
+                          <span className={`game-type-badge ${game.gameType === 1 ? 'bot-badge' : 'pvp-badge'}`}>
+                            {game.gameType === 1 ? 'Bot' : 'PvP'}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`capacity-badge ${getGameStatusClass(game)}`}>
+                            {getGameCapacity(game)}
+                          </span>
+                        </td>
+                        <td>{game.createdAt}</td>
+                        <td>
+                          <button 
+                            className="play-button"
+                            onClick={() => joinGame(parseInt(game.id))}
+                            disabled={!account || game.state === 1 || (game.creator && game.creator.toLowerCase() === account.toLowerCase())}
+                          >
+                            {game.creator && game.creator.toLowerCase() === account?.toLowerCase() 
+                              ? 'Your Game' 
+                              : game.state === 1 
+                                ? 'Full' 
+                                : 'Play'}
+                          </button>
+                        </td>
+                      </tr>
                     ))}
-                    {(!availableGames || availableGames.length === 0) && (
-                      <div className="no-games">No available games</div>
-                    )}
-                  </div>
-                </div>
+                  </tbody>
+                </table>
               )}
             </section>
 
@@ -1410,7 +1556,7 @@ function App() {
                     {myGames.map((game) => (
                       <tr key={game.id}>
                         <td>{game.id}</td>
-                        <td>{game.creator.slice(0, 6)}...{game.creator.slice(-4)}</td>
+                        <td>{game.creator ? `${game.creator.slice(0, 6)}...${game.creator.slice(-4)}` : 'Unknown'}</td>
                         <td>{game.betAmount} STT</td>
                         <td>
                           <span className={`game-type-badge ${game.gameType === 1 ? 'bot-badge' : 'pvp-badge'}`}>
@@ -1426,22 +1572,22 @@ function App() {
                           {game.state === 2 && (
                             <span className={`status-badge ${
                               game.creatorWins > game.joinerWins 
-                                ? (game.creator.toLowerCase() === account?.toLowerCase() ? 'status-won' : 'status-lost')
+                                ? (game.creator?.toLowerCase() === account?.toLowerCase() ? 'status-won' : 'status-lost')
                                 : game.joinerWins > game.creatorWins
-                                  ? (game.creator.toLowerCase() === account?.toLowerCase() ? 'status-lost' : 'status-won')
+                                  ? (game.creator?.toLowerCase() === account?.toLowerCase() ? 'status-lost' : 'status-won')
                                   : 'status-draw'
                             }`}>
                               {game.creatorWins > game.joinerWins 
-                                ? (game.creator.toLowerCase() === account?.toLowerCase() ? 'Won' : 'Lost')
+                                ? (game.creator?.toLowerCase() === account?.toLowerCase() ? 'Won' : 'Lost')
                                 : game.joinerWins > game.creatorWins
-                                  ? (game.creator.toLowerCase() === account?.toLowerCase() ? 'Lost' : 'Won')
+                                  ? (game.creator?.toLowerCase() === account?.toLowerCase() ? 'Lost' : 'Won')
                                   : 'Draw'}
                             </span>
                           )}
                         </td>
                         <td>{game.createdAt}</td>
                         <td>
-                          {game.state === 0 && game.creator.toLowerCase() === account?.toLowerCase() ? (
+                          {game.state === 0 && game.creator?.toLowerCase() === account?.toLowerCase() ? (
                             <button 
                               className="cancel-button"
                               onClick={() => cancelGame(parseInt(game.id))}
