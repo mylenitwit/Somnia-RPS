@@ -20,5 +20,9 @@ module.exports = {
     stringArrayEncoding: ['base64'],
     stringArrayThreshold: 0.75,
     transformObjectKeys: true,
-    unicodeEscapeSequence: false
+    unicodeEscapeSequence: false,
+    // Vercel için özel ayarlar
+    target: 'browser',
+    sourceMap: false,
+    sourceMapMode: 'separate'
 }; 
